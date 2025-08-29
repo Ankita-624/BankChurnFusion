@@ -1,4 +1,4 @@
-const API_URL = "http://127.0.0.1:8000";
+const API_URL = "https://bankchurnfusion.onrender.com";
 
 /* ---------------- helpers ---------------- */
 const toNum=(v,f=0)=>Number.isFinite(parseFloat(v))?parseFloat(v):f;
