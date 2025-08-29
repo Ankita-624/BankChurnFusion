@@ -1,0 +1,109 @@
+|--- z_Tenure <= -0.81
+|   |--- z_AvgBalance <= -0.85
+|   |   |--- z_Tenure <= -0.88
+|   |   |   |--- LoanHistory <= 0.50
+|   |   |   |   |--- class: 1
+|   |   |   |--- LoanHistory >  0.50
+|   |   |   |   |--- class: 1
+|   |   |--- z_Tenure >  -0.88
+|   |   |   |--- class: 1
+|   |--- z_AvgBalance >  -0.85
+|   |   |--- DefaultHistory <= 0.50
+|   |   |   |--- z_Transactions <= -0.60
+|   |   |   |   |--- z_AvgBalance <= -0.50
+|   |   |   |   |   |--- class: 1
+|   |   |   |   |--- z_AvgBalance >  -0.50
+|   |   |   |   |   |--- z_AvgBalance <= 0.66
+|   |   |   |   |   |   |--- z_Tenure <= -0.96
+|   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |--- z_Tenure >  -0.96
+|   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |--- z_AvgBalance >  0.66
+|   |   |   |   |   |   |--- class: 1
+|   |   |   |--- z_Transactions >  -0.60
+|   |   |   |   |--- z_Transactions <= -0.48
+|   |   |   |   |   |--- class: 1
+|   |   |   |   |--- z_Transactions >  -0.48
+|   |   |   |   |   |--- z_AvgBalance <= -0.67
+|   |   |   |   |   |   |--- z_AvgBalance <= -0.75
+|   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |--- z_AvgBalance >  -0.75
+|   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |--- z_AvgBalance >  -0.67
+|   |   |   |   |   |   |--- z_AvgBalance <= -0.39
+|   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |--- z_AvgBalance >  -0.39
+|   |   |   |   |   |   |   |--- class: 1
+|   |   |--- DefaultHistory >  0.50
+|   |   |   |--- CreditCardUsage <= 0.50
+|   |   |   |   |--- LoanHistory <= 0.50
+|   |   |   |   |   |--- z_AvgBalance <= 0.13
+|   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |--- z_AvgBalance >  0.13
+|   |   |   |   |   |   |--- class: 1
+|   |   |   |   |--- LoanHistory >  0.50
+|   |   |   |   |   |--- class: 1
+|   |   |   |--- CreditCardUsage >  0.50
+|   |   |   |   |--- z_Transactions <= 0.52
+|   |   |   |   |   |--- class: 1
+|   |   |   |   |--- z_Transactions >  0.52
+|   |   |   |   |   |--- class: 1
+|--- z_Tenure >  -0.81
+|   |--- z_AvgBalance <= -0.87
+|   |   |--- z_Tenure <= -0.65
+|   |   |   |--- z_AvgBalance <= -0.99
+|   |   |   |   |--- class: 1
+|   |   |   |--- z_AvgBalance >  -0.99
+|   |   |   |   |--- class: 0
+|   |   |--- z_Tenure >  -0.65
+|   |   |   |--- DefaultHistory <= 0.50
+|   |   |   |   |--- z_Transactions <= 0.44
+|   |   |   |   |   |--- z_Transactions <= -0.90
+|   |   |   |   |   |   |--- z_AvgBalance <= -0.97
+|   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |--- z_AvgBalance >  -0.97
+|   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |--- z_Transactions >  -0.90
+|   |   |   |   |   |   |--- z_AvgBalance <= -1.03
+|   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |--- z_AvgBalance >  -1.03
+|   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |--- z_Transactions >  0.44
+|   |   |   |   |   |--- z_AvgBalance <= -1.03
+|   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |--- z_AvgBalance >  -1.03
+|   |   |   |   |   |   |--- z_Transactions <= 0.98
+|   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |--- z_Transactions >  0.98
+|   |   |   |   |   |   |   |--- class: 1
+|   |   |   |--- DefaultHistory >  0.50
+|   |   |   |   |--- z_AvgBalance <= -0.92
+|   |   |   |   |   |--- z_Tenure <= -0.19
+|   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |--- z_Tenure >  -0.19
+|   |   |   |   |   |   |--- z_Tenure <= 0.35
+|   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |--- z_Tenure >  0.35
+|   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |--- z_AvgBalance >  -0.92
+|   |   |   |   |   |--- class: 1
+|   |--- z_AvgBalance >  -0.87
+|   |   |--- DefaultHistory <= 0.50
+|   |   |   |--- class: 0
+|   |   |--- DefaultHistory >  0.50
+|   |   |   |--- z_Transactions <= -1.29
+|   |   |   |   |--- class: 0
+|   |   |   |--- z_Transactions >  -1.29
+|   |   |   |   |--- z_AvgBalance <= -0.83
+|   |   |   |   |   |--- class: 0
+|   |   |   |   |--- z_AvgBalance >  -0.83
+|   |   |   |   |   |--- z_AvgBalance <= 0.98
+|   |   |   |   |   |   |--- z_AvgBalance <= -0.31
+|   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |   |--- z_AvgBalance >  -0.31
+|   |   |   |   |   |   |   |--- class: 1
+|   |   |   |   |   |--- z_AvgBalance >  0.98
+|   |   |   |   |   |   |--- CreditCardUsage <= 0.50
+|   |   |   |   |   |   |   |--- class: 0
+|   |   |   |   |   |   |--- CreditCardUsage >  0.50
+|   |   |   |   |   |   |   |--- class: 0

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Bank Churn Dashboard</title>
+  <link rel="stylesheet" href="style.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <aside class="sidebar">
+    <h2>Churn Dashboard</h2>
+    <nav>
+      <a href="#overview" class="active">Overview</a>
+      <a href="#top-risk">Top Risk Customers</a>
+      <a href="#search">Search Customer</a>
+      <a href="#upload">Upload & Score CSV</a>
+      <a href="#live">Live Prediction</a>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <!-- Overview -->
+    <section id="overview" class="card">
+      <h3>Key Insights</h3>
+      <div class="kpi-container">
+        <div class="kpi"><h2 id="churnRate">--%</h2><p>Churn Rate</p></div>
+        <div class="kpi"><h2 id="highRisk">--</h2><p>High Risk Customers</p></div>
+        <div class="kpi"><h2 id="threshold">--</h2><p>Threshold</p></div>
+      </div>
+      <div class="chart-wrap"><canvas id="churnChart"></canvas></div>
+      <div class="row-right"><button id="downloadTopBtn" class="btn-secondary">Download Top-Risk CSV</button></div>
+    </section>
+
+    <!-- Top Risk -->
+    <section id="top-risk" class="card">
+      <h3>Top Risky Customers</h3>
+      <table>
+        <thead><tr><th>CustomerID</th><th>P_Fused</th><th>Churn Predicted</th></tr></thead>
+        <tbody id="topRiskTable"></tbody>
+      </table>
+    </section>
+
+    <!-- Search -->
+    <section id="search" class="card">
+      <h3>Search Customer</h3>
+      <input type="text" id="searchID" placeholder="Enter CustomerID"/>
+      <button id="searchBtn">Search</button>
+      <div id="searchResult"></div>
+    </section>
+
+    <!-- Upload & Score -->
+    <section id="upload" class="card">
+      <h3>Upload & Score CSV</h3>
+      <p class="muted small">Columns required: CustomerID, Tenure, Transactions, AvgBalance, LoanHistory, CreditCardUsage, DefaultHistory</p>
+      <div class="upload-row">
+        <input type="file" id="csvInput" accept=".csv"/>
+        <button id="uploadBtn">Upload & Score</button>
+        <span id="uploadStatus" class="muted"></span>
+        <label class="inline"><input type="checkbox" id="useUploaded" checked/> Use uploaded results in Overview</label>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>CustomerID</th><th>P_Fused</th><th>Churn Predicted</th></tr></thead>
+          <tbody id="uploadTable"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Live Prediction -->
+    <section id="live" class="card">
+      <h3>Live Prediction</h3>
+      <p class="muted">Enter attributes → real-time score from API.</p>
+
+      <form id="liveForm" class="form-grid">
+        <label title="Customer tenure in years">
+          Tenure (years)
+          <input type="number" id="fTenure" min="0" step="1" required placeholder="e.g., 3"/>
+        </label>
+        <label title="Number of transactions per year">
+          Transactions / year
+          <input type="number" id="fTx" min="0" step="1" required placeholder="e.g., 80"/>
+        </label>
+        <label title="Average balance (₹)">
+          Avg Balance (INR)
+          <input type="number" id="fBal" min="0" step="1000" required placeholder="e.g., 350000"/>
+        </label>
+        <label title="1 = has active/previous loan, 0 = no loans">
+          Loan History
+          <select id="fLoan" required>
+            <option value="1">1 = Has Loan</option>
+            <option value="0">0 = No Loan</option>
+          </select>
+        </label>
+        <label title="1 = uses bank credit card, 0 = does not">
+          Credit Card Usage
+          <select id="fCC" required>
+            <option value="1">1 = Uses</option>
+            <option value="0">0 = No</option>
+          </select>
+        </label>
+        <label title="1 = has default history, 0 = never defaulted">
+          Default History
+          <select id="fDef" required>
+            <option value="1">1 = Defaulted</option>
+            <option value="0">0 = Never</option>
+          </select>
+        </label>
+
+        <div class="form-actions">
+          <button type="submit" id="predictBtn">Predict</button>
+          <span id="liveStatus" class="muted"></span>
+          <span id="spinner" class="spinner hidden"></span>
+        </div>
+      </form>
+
+      <div id="liveResult" class="result-card hidden">
+        <div class="result-header">
+          <div>
+            <div class="risk-badge" id="riskBadge">Risk</div>
+            <div class="risk-line"><div id="riskBar" class="risk-bar"></div></div>
+          </div>
+          <div class="result-nums">
+            <div><span class="lbl">P_Hard</span><span id="rPHard">--</span></div>
+            <div><span class="lbl">P_Soft</span><span id="rPSoft">--</span></div>
+            <div><span class="lbl">Change</span><span id="rChange">--</span></div>
+            <div><span class="lbl">P_Fused</span><span id="rPFused">--</span></div>
+            <div><span class="lbl">Predicted</span><span id="rFlag">--</span></div>
+          </div>
+        </div>
+        <p id="expText" class="muted small"></p>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
