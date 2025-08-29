@@ -1,0 +1,9 @@
+[build]
+  publish = "dashboard"
+  command = ""
+
+# Optional: Cache headers for static assets
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cache-Control = "public, max-age=3600"
