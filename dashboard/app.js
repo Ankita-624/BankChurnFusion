@@ -43,7 +43,7 @@ function renderChart(churn, nonChurn) {
 window.addEventListener("resize", () => { if (chart) renderChart(lastChurn, lastKeep); });
 
 /* ================== state ================== */
-let baselineCustomers = [];   // from scored_customers.csv (optional in prod)
+let baselineCustomers = [];   // from scored_customers.csv (optional)
 let uploadedCustomers = [];   // from /batch_score
 let threshold = null;
 
@@ -60,20 +60,16 @@ function indexize(list) {
   });
   return m;
 }
-function getActiveMap() {
-  const useUploaded = document.getElementById("useUploaded");
-  if (useUploaded && useUploaded.checked && uploadedIndex.size) return uploadedIndex;
-  if (baselineIndex.size) return baselineIndex;
-  return uploadedIndex; // fallback if only uploaded exists
-}
 
 /* ============ dashboard core ============ */
 async function loadBaseline() {
   const health = await fetch(`${API_URL}/health`).then(r => r.json());
   threshold = health.threshold;
-  document.getElementById("threshold").innerText = threshold;
+  const tEl = document.getElementById("threshold");
+  if (tEl) tEl.innerText = threshold;
 
-  const csv = await fetch("scored_customers.csv").then(r => r.text()).catch(() => null);
+  // Optional local CSV (only present if you deployed it)
+  const csv = await fetch("scored_customers.csv").then(r => r.ok ? r.text() : null).catch(() => null);
   if (csv) {
     const rows = parseCSV(csv);
     baselineCustomers = rows.map(r => ({
@@ -82,26 +78,39 @@ async function loadBaseline() {
       churn: String(r["Churn_Predicted"]).trim() === "1"
     })).filter(c => Number.isFinite(c.pFused));
 
-    // build index for search
     baselineIndex = indexize(baselineCustomers);
     console.log("[baseline] customers:", baselineCustomers.length, "indexed:", baselineIndex.size);
 
     renderOverview(baselineCustomers);
     renderTopTable(baselineCustomers, document.getElementById("topRiskTable"));
+  } else {
+    console.log("[baseline] scored_customers.csv not found (expected on Netlify). Upload a CSV to use search.");
   }
 }
 
 function renderOverview(customers) {
   const total = customers.length;
-  const churners = customers.filter(c => c.churn).length;
-  document.getElementById("churnRate").innerText = total ? ((churners / total) * 100).toFixed(1) + "%" : "--%";
-  document.getElementById("highRisk").innerText = churners;
+  const churners = customers.filter(c => (c.churn ?? (c.Churn_Predicted === 1))).length;
+  const cr = total ? ((churners / total) * 100).toFixed(1) + "%" : "--%";
+  const crEl = document.getElementById("churnRate");
+  const hrEl = document.getElementById("highRisk");
+  if (crEl) crEl.innerText = cr;
+  if (hrEl) hrEl.innerText = churners;
   renderChart(churners, total - churners);
 }
 
 function renderTopTable(customers, tbody) {
-  const top = [...customers].sort((a, b) => b.pFused - a.pFused).slice(0, 10);
-  tbody.innerHTML = top.map(c => `<tr><td>${c.id ?? c.CustomerID}</td><td>${fmtProb(c.pFused ?? c.P_Fused)}</td><td>${(c.churn ?? (c.Churn_Predicted === 1)) ? "Yes" : "No"}</td></tr>`).join("");
+  if (!tbody) return;
+  const top = [...customers]
+    .sort((a, b) => (b.pFused ?? b.P_Fused) - (a.pFused ?? a.P_Fused))
+    .slice(0, 10);
+  tbody.innerHTML = top.map(c =>
+    `<tr>
+      <td>${c.id ?? c.CustomerID}</td>
+      <td>${fmtProb(c.pFused ?? c.P_Fused)}</td>
+      <td>${(c.churn ?? (c.Churn_Predicted === 1)) ? "Yes" : "No"}</td>
+    </tr>`
+  ).join("");
 }
 
 /* ======= download Top-Risk CSV ======= */
@@ -125,42 +134,39 @@ function downloadTopRisk(customers) {
 
 /* ===== upload & batch score ===== */
 async function uploadAndScore() {
-  const file = document.getElementById("csvInput").files[0];
+  const file = document.getElementById("csvInput")?.files?.[0];
   const status = document.getElementById("uploadStatus");
   const tbody = document.getElementById("uploadTable");
   if (!file) { alert("Choose a CSV file first."); return; }
 
   const fd = new FormData();
   fd.append("file", file, file.name);
-  status.textContent = "Uploading & scoring...";
+  if (status) status.textContent = "Uploading & scoring...";
   try {
     const res = await fetch(`${API_URL}/batch_score`, { method: "POST", body: fd });
     const data = await res.json();
     threshold = data.threshold;
-    document.getElementById("threshold").innerText = threshold;
+    const tEl = document.getElementById("threshold");
+    if (tEl) tEl.innerText = threshold;
 
     uploadedCustomers = data.rows.map(r => ({
       id: r.CustomerID,
       pFused: toNum(r.P_Fused),
       churn: (r.Churn_Predicted === 1)
     }));
-
-    // build index for search (uploaded)
     uploadedIndex = indexize(uploadedCustomers);
     console.log("[uploaded] customers:", uploadedCustomers.length, "indexed:", uploadedIndex.size);
 
-    // table under Upload section
     renderTopTable(uploadedCustomers, tbody);
 
-    // optionally replace overview/top with uploaded data
-    if (document.getElementById("useUploaded").checked) {
+    if (document.getElementById("useUploaded")?.checked) {
       renderOverview(uploadedCustomers);
       renderTopTable(uploadedCustomers, document.getElementById("topRiskTable"));
     }
-    status.textContent = `Scored ${data.count} rows.`;
+    if (status) status.textContent = `Scored ${data.count} rows.`;
   } catch (e) {
     console.error(e);
-    status.textContent = "Error during upload.";
+    if (status) status.textContent = "Error during upload.";
     alert("Upload failed. Check API is running and CSV has required columns.");
   }
 }
@@ -220,156 +226,100 @@ async function submitLive(e) {
   for (const [k, v] of Object.entries(payload)) { if (Number.isNaN(v)) { alert(`Invalid ${k}`); return; } }
 
   try {
-    btn.disabled = true; spinner.classList.remove("hidden"); status.textContent = "Scoring...";
+    if (btn) btn.disabled = true;
+    if (spinner) spinner.classList.remove("hidden");
+    if (status) status.textContent = "Scoring...";
     const resp = await fetch(`${API_URL}/predict_churn`, {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload)
     });
     const data = await resp.json();
-    btn.disabled = false; spinner.classList.add("hidden"); status.textContent = "";
+    if (btn) btn.disabled = false;
+    if (spinner) spinner.classList.add("hidden");
+    if (status) status.textContent = "";
 
-    document.getElementById("rPHard").textContent = fmtProb(data.P_Hard);
-    document.getElementById("rPSoft").textContent = fmtProb(data.P_Soft);
+    document.getElementById("rPHard").textContent  = fmtProb(data.P_Hard);
+    document.getElementById("rPSoft").textContent  = fmtProb(data.P_Soft);
     document.getElementById("rChange").textContent = toNum(data.Change_Score).toFixed(2);
     document.getElementById("rPFused").textContent = fmtProb(data.P_Fused);
-    document.getElementById("rFlag").textContent = data.Churn_Predicted ? "Yes" : "No";
+    document.getElementById("rFlag").textContent   = data.Churn_Predicted ? "Yes" : "No";
 
     const pct = Math.round(Math.max(0, Math.min(1, data.P_Fused)) * 100);
-    bar.style.width = pct + "%";
-    badge.classList.remove("risk-low", "risk-medium", "risk-high");
-    const band = riskBand(data.P_Fused); badge.classList.add(band.cls); badge.textContent = `${band.label} RISK`;
+    if (bar)   bar.style.width = pct + "%";
+    if (badge) {
+      badge.classList.remove("risk-low", "risk-medium", "risk-high");
+      const band = riskBand(data.P_Fused); badge.classList.add(band.cls); badge.textContent = `${band.label} RISK`;
+    }
 
     document.getElementById("expText").textContent = explain(payload);
-    out.classList.remove("hidden");
+    if (out) out.classList.remove("hidden");
     saveForm();
   } catch (err) {
-    btn.disabled = false; spinner.classList.add("hidden"); status.textContent = "";
+    if (btn) btn.disabled = false;
+    if (spinner) spinner.classList.add("hidden");
+    if (status) status.textContent = "";
     console.error("Live predict error:", err);
     alert("API call failed. Ensure FastAPI is running with CORS.");
   }
 }
 
-/* ============ wire up ============ */
-document.getElementById("uploadBtn").addEventListener("click", uploadAndScore);
-document.getElementById("downloadTopBtn").addEventListener("click", () => {
-  const useUploaded = document.getElementById("useUploaded").checked;
-  const source = (useUploaded && uploadedCustomers.length) ? uploadedCustomers : baselineCustomers;
-  if (!source.length) { alert("No data to export yet."); return; }
-  downloadTopRisk(source);
-});
-document.getElementById("liveForm").addEventListener("submit", submitLive);
+/* ================== DOM READY ================== */
+document.addEventListener("DOMContentLoaded", () => {
+  // attach listeners safely after DOM exists
+  const $uploadBtn   = document.getElementById("uploadBtn");
+  const $dlBtn       = document.getElementById("downloadTopBtn");
+  const $liveForm    = document.getElementById("liveForm");
+  const $useUploaded = document.getElementById("useUploaded");
 
-// Search click (uses active indexed data)
-document.getElementById("searchBtn").addEventListener("click", () => {
-  const res = document.getElementById("searchResult");
-  const raw = document.getElementById("searchID").value.trim();
-  if (!raw) { res.textContent = "Enter a CustomerID."; return; }
-
-  const id = raw.toUpperCase();
-  const map = getActiveMap();
-  if (!map.size) {
-    res.textContent = "No data loaded yet. Upload a CSV or include scored_customers.csv in /dashboard.";
-    return;
-  }
-
-  const hit = map.get(id);
-  if (!hit) { res.textContent = "Customer not found."; return; }
-
-  const custId = hit.id ?? hit.CustomerID ?? id;
-  const pFused = fmtProb(hit.pFused ?? hit.P_Fused);
-  const churn = (hit.churn ?? (hit.Churn_Predicted === 1)) ? "Yes" : "No";
-  res.textContent = `Customer ${custId} → P_Fused: ${pFused} | Churn: ${churn}`;
-});
-
-// Enter key triggers search
-document.getElementById("searchID").addEventListener("keydown", (e) => {
-  if (e.key === "Enter") document.getElementById("searchBtn").click();
-});
-
-/* ============ init ============ */
-loadForm();
-loadBaseline();
-// ---------- DOM READY WRAPPER ----------
-window.addEventListener("DOMContentLoaded", () => {
-  // sanity-check IDs exist
-  const el = (id) => {
-    const n = document.getElementById(id);
-    if (!n) console.warn(`[Search] Missing element #${id}`);
-    return n;
-  };
-
-  const $searchBtn   = el("searchBtn");
-  const $searchID    = el("searchID");
-  const $searchRes   = el("searchResult");
-  const $useUploaded = el("useUploaded");
-  const $uploadBtn   = el("uploadBtn");
-  const $dlBtn       = el("downloadTopBtn");
-  const $liveForm    = el("liveForm");
-
-  // attach other listeners if they exist
-  if ($uploadBtn)   $uploadBtn.addEventListener("click", uploadAndScore);
-  if ($dlBtn)       $dlBtn.addEventListener("click", () => {
+  if ($uploadBtn) $uploadBtn.addEventListener("click", uploadAndScore);
+  if ($dlBtn) $dlBtn.addEventListener("click", () => {
     const source = ($useUploaded && $useUploaded.checked && uploadedCustomers.length)
       ? uploadedCustomers : baselineCustomers;
     if (!source.length) { alert("No data to export yet."); return; }
     downloadTopRisk(source);
   });
-  if ($liveForm)    $liveForm.addEventListener("submit", submitLive);
+  if ($liveForm) $liveForm.addEventListener("submit", submitLive);
 
-  // helper: build map indexes whenever data changes
-  const rebuildIndexes = () => {
-    baselineIndex = indexize(baselineCustomers);
-    uploadedIndex = indexize(uploadedCustomers);
-    console.log("[index] baseline:", baselineCustomers.length, "→", baselineIndex.size,
-                "| uploaded:", uploadedCustomers.length, "→", uploadedIndex.size);
-  };
+  // bootstrap
+  loadForm();
+  loadBaseline();
 
-  // bootstrap baseline (health + optional CSV)
-  (async () => {
-    await loadBaseline();   // your existing function fills baselineCustomers
-    rebuildIndexes();       // make sure map is built after baseline load
-  })();
+  // ------- SEARCH (robust) -------
+  const $searchBtn = document.getElementById("searchBtn");
+  const $searchID  = document.getElementById("searchID");
+  const $result    = document.getElementById("searchResult");
 
-  // hook upload to rebuild indexes as well
-  const originalUploadAndScore = uploadAndScore;
-  uploadAndScore = async function() {
-    await originalUploadAndScore(); // fills uploadedCustomers
-    rebuildIndexes();
-  };
+  if (!$searchBtn || !$searchID || !$result) {
+    console.warn("[Search] required elements not found in DOM");
+    return;
+  }
 
-  // active map getter (uploaded if checked & exists; else baseline; else uploaded fallback)
-  const getActiveMap = () => {
-    if ($useUploaded && $useUploaded.checked && uploadedIndex.size) return uploadedIndex;
-    if (baselineIndex.size) return baselineIndex;
-    return uploadedIndex;
-  };
-
-  // --- SEARCH LOGIC ---
   const doSearch = () => {
-    if (!$searchRes || !$searchID) return;
+    const id = ($searchID.value || "").trim().toUpperCase();
+    if (!id) { $result.textContent = "Enter a CustomerID."; return; }
 
-    const raw = ($searchID.value || "").trim();
-    if (!raw) { $searchRes.textContent = "Enter a CustomerID."; return; }
+    // prefer uploaded when checkbox is checked and we have data
+    const useUploaded = $useUploaded && $useUploaded.checked && uploadedIndex.size;
+    const map = useUploaded ? uploadedIndex : (baselineIndex.size ? baselineIndex : uploadedIndex);
 
-    const map = getActiveMap();
     if (!map.size) {
-      $searchRes.textContent = "No data loaded yet. Upload a CSV or include scored_customers.csv.";
+      $result.textContent = "No data loaded yet. Upload a CSV or include scored_customers.csv.";
       return;
     }
 
-    const key = raw.toUpperCase();
-    const hit = map.get(key);
-    if (!hit) { 
-      $searchRes.textContent = "Customer not found.";
-      console.log("[search] tried:", key, "| available size:", map.size);
+    const hit = map.get(id);
+    if (!hit) {
+      $result.textContent = "Customer not found.";
       return;
     }
 
-    const custId = hit.id ?? hit.CustomerID ?? key;
+    const custId = hit.id ?? hit.CustomerID ?? id;
     const p      = fmtProb(hit.pFused ?? hit.P_Fused);
     const flag   = (hit.churn ?? (hit.Churn_Predicted === 1)) ? "Yes" : "No";
-    $searchRes.textContent = `Customer ${custId} → P_Fused: ${p} | Churn: ${flag}`;
+    $result.textContent = `Customer ${custId} → P_Fused: ${p} | Churn: ${flag}`;
   };
 
-  if ($searchBtn) $searchBtn.addEventListener("click", doSearch);
-  if ($searchID)  $searchID.addEventListener("keydown", (e) => { if (e.key === "Enter") doSearch(); });
+  $searchBtn.addEventListener("click", doSearch);
+  $searchID.addEventListener("keydown", (e) => { if (e.key === "Enter") doSearch(); });
+
+  console.log("[Search] listeners attached");
 });
