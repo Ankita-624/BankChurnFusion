@@ -9,14 +9,22 @@ app = FastAPI(
     description="Hard + Soft + Change-Mining + Fusion-based churn scoring with batch upload"
 )
 
-# --- CORS ---
+from fastapi.middleware.cors import CORSMiddleware
+
+ALLOWED_ORIGINS = [
+    "http://127.0.0.1:5500",
+    "http://localhost:5500",
+    "https://bank-churn-dashboard.netlify.app",  # your Netlify URL (exact)
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://127.0.0.1:5500", "http://localhost:5500","https://bank-churn-dashboard.netlify.app"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],      # lets preflight OPTIONS pass
+    allow_headers=["*"],      # allows Content-Type: multipart/form-data, etc.
 )
+
 
 # --- artifacts ---
 scaler = joblib.load("artifacts/robust_scaler.joblib")
