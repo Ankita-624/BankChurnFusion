@@ -288,3 +288,88 @@ document.getElementById("searchID").addEventListener("keydown", (e) => {
 /* ============ init ============ */
 loadForm();
 loadBaseline();
+// ---------- DOM READY WRAPPER ----------
+window.addEventListener("DOMContentLoaded", () => {
+  // sanity-check IDs exist
+  const el = (id) => {
+    const n = document.getElementById(id);
+    if (!n) console.warn(`[Search] Missing element #${id}`);
+    return n;
+  };
+
+  const $searchBtn   = el("searchBtn");
+  const $searchID    = el("searchID");
+  const $searchRes   = el("searchResult");
+  const $useUploaded = el("useUploaded");
+  const $uploadBtn   = el("uploadBtn");
+  const $dlBtn       = el("downloadTopBtn");
+  const $liveForm    = el("liveForm");
+
+  // attach other listeners if they exist
+  if ($uploadBtn)   $uploadBtn.addEventListener("click", uploadAndScore);
+  if ($dlBtn)       $dlBtn.addEventListener("click", () => {
+    const source = ($useUploaded && $useUploaded.checked && uploadedCustomers.length)
+      ? uploadedCustomers : baselineCustomers;
+    if (!source.length) { alert("No data to export yet."); return; }
+    downloadTopRisk(source);
+  });
+  if ($liveForm)    $liveForm.addEventListener("submit", submitLive);
+
+  // helper: build map indexes whenever data changes
+  const rebuildIndexes = () => {
+    baselineIndex = indexize(baselineCustomers);
+    uploadedIndex = indexize(uploadedCustomers);
+    console.log("[index] baseline:", baselineCustomers.length, "→", baselineIndex.size,
+                "| uploaded:", uploadedCustomers.length, "→", uploadedIndex.size);
+  };
+
+  // bootstrap baseline (health + optional CSV)
+  (async () => {
+    await loadBaseline();   // your existing function fills baselineCustomers
+    rebuildIndexes();       // make sure map is built after baseline load
+  })();
+
+  // hook upload to rebuild indexes as well
+  const originalUploadAndScore = uploadAndScore;
+  uploadAndScore = async function() {
+    await originalUploadAndScore(); // fills uploadedCustomers
+    rebuildIndexes();
+  };
+
+  // active map getter (uploaded if checked & exists; else baseline; else uploaded fallback)
+  const getActiveMap = () => {
+    if ($useUploaded && $useUploaded.checked && uploadedIndex.size) return uploadedIndex;
+    if (baselineIndex.size) return baselineIndex;
+    return uploadedIndex;
+  };
+
+  // --- SEARCH LOGIC ---
+  const doSearch = () => {
+    if (!$searchRes || !$searchID) return;
+
+    const raw = ($searchID.value || "").trim();
+    if (!raw) { $searchRes.textContent = "Enter a CustomerID."; return; }
+
+    const map = getActiveMap();
+    if (!map.size) {
+      $searchRes.textContent = "No data loaded yet. Upload a CSV or include scored_customers.csv.";
+      return;
+    }
+
+    const key = raw.toUpperCase();
+    const hit = map.get(key);
+    if (!hit) { 
+      $searchRes.textContent = "Customer not found.";
+      console.log("[search] tried:", key, "| available size:", map.size);
+      return;
+    }
+
+    const custId = hit.id ?? hit.CustomerID ?? key;
+    const p      = fmtProb(hit.pFused ?? hit.P_Fused);
+    const flag   = (hit.churn ?? (hit.Churn_Predicted === 1)) ? "Yes" : "No";
+    $searchRes.textContent = `Customer ${custId} → P_Fused: ${p} | Churn: ${flag}`;
+  };
+
+  if ($searchBtn) $searchBtn.addEventListener("click", doSearch);
+  if ($searchID)  $searchID.addEventListener("keydown", (e) => { if (e.key === "Enter") doSearch(); });
+});
