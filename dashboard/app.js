@@ -217,3 +217,34 @@ document.getElementById("liveForm").addEventListener("submit", submitLive);
 /* init */
 loadForm();
 loadBaseline();
+// choose which customer list to use right now
+function getActiveCustomers() {
+  const useUploaded = document.getElementById("useUploaded");
+  if (useUploaded && useUploaded.checked && uploadedCustomers.length) return uploadedCustomers;
+  // fallback: if baseline was shipped, use it; else if we only have uploaded, use that
+  return baselineCustomers.length ? baselineCustomers : uploadedCustomers;
+}
+
+// search click
+document.getElementById("searchBtn").addEventListener("click", () => {
+  const res = document.getElementById("searchResult");
+  const raw = document.getElementById("searchID").value.trim();
+  if (!raw) { res.textContent = "Enter a CustomerID."; return; }
+
+  const id = raw.toUpperCase();
+  const source = getActiveCustomers();
+  if (!source.length) {
+    res.textContent = "No data loaded yet. Upload a CSV or include scored_customers.csv in /dashboard.";
+    return;
+  }
+
+  const hit = source.find(c => String(c.id).trim().toUpperCase() === id);
+  res.textContent = hit
+    ? `Customer ${hit.id} → P_Fused: ${fmtProb(hit.pFused)} | Churn: ${hit.churn ? "Yes" : "No"}`
+    : "Customer not found.";
+});
+
+// allow Enter key to trigger search
+document.getElementById("searchID").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") document.getElementById("searchBtn").click();
+});
